@@ -1,0 +1,48 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
+#include <omp.h>
+
+#define SIZE 1000000
+
+void array_ops(int *a, int *b, int *result, char op) {
+    #pragma omp parallel for
+    for (int i = 0; i < SIZE; i++) {
+        switch(op) {
+            case '+': result[i] = a[i] + b[i]; break;
+            case '-': result[i] = a[i] - b[i]; break;
+            case '*': result[i] = a[i] * b[i]; break;
+            case '/': result[i] = b[i] != 0 ? a[i] / b[i] : 0; break;
+        }
+    }
+}
+
+int main() {
+    int *a = malloc(SIZE * sizeof(int));
+    int *b = malloc(SIZE * sizeof(int));
+    int *result = malloc(SIZE * sizeof(int));
+
+    // Initialize arrays
+    #pragma omp parallel for
+    for (int i = 0; i < SIZE; i++) {
+        a[i] = rand() % 100;
+        b[i] = rand() % 100 + 1;
+    }
+
+    // Sequential
+    double start = omp_get_wtime();
+    for (int i = 0; i < SIZE; i++) {
+        result[i] = a[i] + b[i];
+    }
+    double end = omp_get_wtime();
+    printf("Sequential time: %.2f ms\n", (end-start)*1000);
+
+    // Parallel
+    start = omp_get_wtime();
+    array_ops(a, b, result, '+');
+    end = omp_get_wtime();
+    printf("Parallel time: %.2f ms\n", (end-start)*1000);
+
+    free(a); free(b); free(result);
+    return 0;
+}
