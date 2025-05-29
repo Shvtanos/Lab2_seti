@@ -1,0 +1,75 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
+#include <omp.h>
+
+#define SIZE 1000000
+#define PARALLEL_DEPTH 4
+
+void swap(int *a, int *b) {
+    int t = *a;
+    *a = *b;
+    *b = t;
+}
+
+int partition(int *arr, int low, int high) {
+    int pivot = arr[high];
+    int i = low - 1;
+    for (int j = low; j < high; j++) {
+        if (arr[j] < pivot) {
+            i++;
+            swap(&arr[i], &arr[j]);
+        }
+    }
+    swap(&arr[i+1], &arr[high]);
+    return i+1;
+}
+
+void quicksort(int *arr, int low, int high, int depth) {
+    if (low < high) {
+        int pi = partition(arr, low, high);
+        
+        if (depth < PARALLEL_DEPTH) {
+            #pragma omp task firstprivate(arr, low, pi, depth)
+            quicksort(arr, low, pi-1, depth+1);
+            
+            #pragma omp task firstprivate(arr, pi, high, depth)
+            quicksort(arr, pi+1, high, depth+1);
+            
+            #pragma omp taskwait
+        } else {
+            quicksort(arr, low, pi-1, depth+1);
+            quicksort(arr, pi+1, high, depth+1);
+        }
+    }
+}
+
+int main() {
+    int *arr = malloc(SIZE * sizeof(int));
+    for (int i = 0; i < SIZE; i++) {
+        arr[i] = rand() % 10000;
+    }
+
+    // Sequential
+    double start = omp_get_wtime();
+    quicksort(arr, 0, SIZE-1, PARALLEL_DEPTH+1);
+    double end = omp_get_wtime();
+    printf("Sequential time: %.2f ms\n", (end-start)*1000);
+
+    // Parallel
+    for (int i = 0; i < SIZE; i++) {
+        arr[i] = rand() % 10000;
+    }
+    
+    start = omp_get_wtime();
+    #pragma omp parallel
+    {
+        #pragma omp single
+        quicksort(arr, 0, SIZE-1, 0);
+    }
+    end = omp_get_wtime();
+    printf("Parallel time: %.2f ms\n", (end-start)*1000);
+
+    free(arr);
+    return 0;
+}
