@@ -1,0 +1,63 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
+#include <omp.h>
+
+#define ROWS 1000
+#define COLS 1000
+
+void matrix_ops(int **a, int **b, int **result, char op) {
+    #pragma omp parallel for collapse(2)
+    for (int i = 0; i < ROWS; i++) {
+        for (int j = 0; j < COLS; j++) {
+            switch(op) {
+                case '+': result[i][j] = a[i][j] + b[i][j]; break;
+                case '-': result[i][j] = a[i][j] - b[i][j]; break;
+                case '*': result[i][j] = a[i][j] * b[i][j]; break;
+                case '/': result[i][j] = b[i][j] != 0 ? a[i][j] / b[i][j] : 0; break;
+            }
+        }
+    }
+}
+
+int main() {
+    int **a = malloc(ROWS * sizeof(int *));
+    int **b = malloc(ROWS * sizeof(int *));
+    int **result = malloc(ROWS * sizeof(int *));
+    
+    #pragma omp parallel for
+    for (int i = 0; i < ROWS; i++) {
+        a[i] = malloc(COLS * sizeof(int));
+        b[i] = malloc(COLS * sizeof(int));
+        result[i] = malloc(COLS * sizeof(int));
+        for (int j = 0; j < COLS; j++) {
+            a[i][j] = rand() % 100;
+            b[i][j] = rand() % 100 + 1;
+        }
+    }
+
+    // Sequential
+    double start = omp_get_wtime();
+    for (int i = 0; i < ROWS; i++) {
+        for (int j = 0; j < COLS; j++) {
+            result[i][j] = a[i][j] + b[i][j];
+        }
+    }
+    double end = omp_get_wtime();
+    printf("Sequential time: %.2f ms\n", (end-start)*1000);
+
+    // Parallel
+    start = omp_get_wtime();
+    matrix_ops(a, b, result, '+');
+    end = omp_get_wtime();
+    printf("Parallel time: %.2f ms\n", (end-start)*1000);
+
+    // Cleanup
+    #pragma omp parallel for
+    for (int i = 0; i < ROWS; i++) {
+        free(a[i]); free(b[i]); free(result[i]);
+    }
+    free(a); free(b); free(result);
+    
+    return 0;
+}
