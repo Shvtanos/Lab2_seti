@@ -1,0 +1,45 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
+#include <omp.h>
+
+#define SIZE 1000000
+
+long long sequential_sum(int *array, int size) {
+    long long sum = 0;
+    for (int i = 0; i < size; i++) {
+        sum += array[i];
+    }
+    return sum;
+}
+
+long long parallel_sum(int *array, int size) {
+    long long sum = 0;
+    #pragma omp parallel for reduction(+:sum)
+    for (int i = 0; i < size; i++) {
+        sum += array[i];
+    }
+    return sum;
+}
+
+int main() {
+    int *array = malloc(SIZE * sizeof(int));
+    for (int i = 0; i < SIZE; i++) {
+        array[i] = rand() % 100;
+    }
+
+    // Sequential
+    double start = omp_get_wtime();
+    long long seq_sum = sequential_sum(array, SIZE);
+    double end = omp_get_wtime();
+    printf("Sequential sum: %lld, Time: %.2f ms\n", seq_sum, (end-start)*1000);
+
+    // Parallel
+    start = omp_get_wtime();
+    long long par_sum = parallel_sum(array, SIZE);
+    end = omp_get_wtime();
+    printf("Parallel sum: %lld, Time: %.2f ms\n", par_sum, (end-start)*1000);
+
+    free(array);
+    return 0;
+}
